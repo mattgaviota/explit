@@ -148,7 +148,7 @@ export default function App({ sessionId }: AppProps) {
   // Update document title when session name changes
   useEffect(() => {
     const displayName = session?.name || 'Sin nombre';
-    document.title = `${displayName} - Cuentas Claras`;
+    document.title = `${displayName} - Explit`;
   }, [session?.name]);
 
   if (sessionLoading) {
@@ -178,7 +178,7 @@ export default function App({ sessionId }: AppProps) {
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-indigo-600 flex items-center gap-2">
-              <Wallet className="w-8 h-8" /> Cuentas Claras
+              <Wallet className="w-8 h-8" /> Explit
             </h1>
             <div className="mt-3 flex items-center gap-2">
               {isEditingName ? (

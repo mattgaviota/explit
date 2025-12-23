@@ -1,4 +1,4 @@
-# Cuentas Claras
+# Explit
 
 Una aplicación web moderna para dividir gastos de forma justa en tus juntadas, creada con Next.js y Firebase.
 

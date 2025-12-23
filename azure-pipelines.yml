@@ -1,0 +1,95 @@
+trigger:
+  - main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile'
+  imageName: 'explit'
+  imageTag: '$(Build.BuildId)'
+  artifactName: 'docker-image'
+  artifactPath: '$(Build.ArtifactStagingDirectory)'
+
+stages:
+  - stage: Build
+    displayName: Build Docker Image
+    jobs:
+      - job: BuildImage
+        displayName: Build and Compress Docker Image
+        steps:
+          - checkout: self
+
+          # Display build info
+          - script: |
+              echo "Build ID: $(Build.BuildId)"
+              echo "Repository: $(Build.Repository.Name)"
+              echo "Branch: $(Build.SourceBranch)"
+              echo "Image Name: $(imageName):$(imageTag)"
+            displayName: 'Display Build Info'
+
+          # Build Docker image with secrets from Variable Group
+          - task: Docker@2
+            displayName: 'Build Docker Image'
+            inputs:
+              command: 'build'
+              Dockerfile: '$(dockerfilePath)'
+              tags: |
+                $(imageName):$(imageTag)
+                $(imageName):latest
+              arguments: |
+                --build-arg NEXT_PUBLIC_FIREBASE_API_KEY=$(NEXT_PUBLIC_FIREBASE_API_KEY)
+                --build-arg NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=$(NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN)
+                --build-arg NEXT_PUBLIC_FIREBASE_PROJECT_ID=$(NEXT_PUBLIC_FIREBASE_PROJECT_ID)
+                --build-arg NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=$(NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET)
+                --build-arg NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=$(NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID)
+                --build-arg NEXT_PUBLIC_FIREBASE_APP_ID=$(NEXT_PUBLIC_FIREBASE_APP_ID)
+                --build-arg NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=$(NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID)
+                --build-arg NEXT_PUBLIC_FIREBASE_DATABASE_NAME=$(NEXT_PUBLIC_FIREBASE_DATABASE_NAME)
+
+          # Save Docker image to tar file
+          - script: |
+              mkdir -p $(artifactPath)
+              docker save $(imageName):$(imageTag) -o $(artifactPath)/$(imageName)-$(imageTag).tar
+              echo "Docker image saved to $(artifactPath)/$(imageName)-$(imageTag).tar"
+            displayName: 'Save Docker Image to TAR'
+
+          # Compress the tar file with gzip
+          - script: |
+              cd $(artifactPath)
+              gzip $(imageName)-$(imageTag).tar
+              ls -lh $(imageName)-$(imageTag).tar.gz
+              echo "Compressed size:"
+              du -h $(imageName)-$(imageTag).tar.gz
+            displayName: 'Compress Docker Image with GZIP'
+
+          # Create metadata file
+          - script: |
+              cat > $(artifactPath)/image-metadata.json << EOF
+              {
+                "imageName": "$(imageName)",
+                "imageTag": "$(imageTag)",
+                "buildId": "$(Build.BuildId)",
+                "sourceVersion": "$(Build.SourceVersion)",
+                "buildTime": "$(System.CollectionUri)",
+                "repository": "$(Build.Repository.Name)",
+                "branch": "$(Build.SourceBranch)"
+              }
+              EOF
+              cat $(artifactPath)/image-metadata.json
+            displayName: 'Create Metadata File'
+
+          # Publish artifact
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish Docker Image Artifact'
+            inputs:
+              pathToPublish: '$(artifactPath)'
+              artifactName: '$(artifactName)-$(imageTag)'
+              publishLocation: 'Container'
+
+          # Log artifact info
+          - script: |
+              echo "Artifact published: $(artifactName)-$(imageTag)"
+              echo "Files in artifact:"
+              ls -lh $(artifactPath)
+            displayName: 'Log Artifact Information'

@@ -69,7 +69,7 @@ export default function Home() {
         <header className="text-center space-y-4">
           <div className="flex items-center justify-center gap-3">
             <Wallet className="w-12 h-12 text-indigo-600" />
-            <h1 className="text-5xl font-bold text-indigo-600">Cuentas Claras</h1>
+            <h1 className="text-5xl font-bold text-indigo-600">Explit</h1>
           </div>
           <p className="text-xl text-slate-600">
             Divide gastos sin complicaciones en tus juntadas

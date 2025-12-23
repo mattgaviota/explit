@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Cuentas Claras** is a Next.js expense splitter application with real-time persistence via Firebase. It helps groups divide expenses fairly by tracking who paid for what and calculating who owes whom. Users can create sessions and share unique URLs with friends for collaborative expense tracking.
+**Explit** is a Next.js expense splitter application with real-time persistence via Firebase. It helps groups divide expenses fairly by tracking who paid for what and calculating who owes whom. Users can create sessions and share unique URLs with friends for collaborative expense tracking.
 
 ## Architecture
 
