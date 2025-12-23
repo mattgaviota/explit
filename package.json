@@ -1,0 +1,26 @@
+{
+  "name": "cuentas-claras",
+  "version": "1.0.0",
+  "description": "Divide gastos sin complicaciones en tus juntadas",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "^16.1.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "firebase": "^10.13.0",
+    "lucide-react": "^0.561.0",
+    "tailwindcss": "^3.4.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0",
+    "@types/react": "^19.0.0",
+    "@types/node": "^20.0.0",
+    "postcss": "^8.4.0",
+    "autoprefixer": "^10.4.0"
+  }
+}
