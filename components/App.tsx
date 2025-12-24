@@ -8,6 +8,7 @@ import {
   serverTimestamp,
   arrayUnion,
   arrayRemove,
+  deleteField,
 } from 'firebase/firestore';
 import { PlusCircle, Receipt, Wallet } from 'lucide-react';
 import { useSession, useExpenses } from '@/lib/hooks';
@@ -86,9 +87,21 @@ export default function App({ sessionId }: AppProps) {
     if (!participantToRemove) return;
 
     try {
+      // If removing a caregiver, free those being cared for
+      let updatedParticipants = participants.filter((p) => p.id !== id);
+      if (participantToRemove.caresFor) {
+        updatedParticipants = updatedParticipants.map((p) => {
+          if (p.caresFor === id) {
+            const { caresFor, ...rest } = p;
+            return rest;
+          }
+          return p;
+        });
+      }
+
       // Remove participant
       await setDoc(getSessionRef(sessionId), {
-        participants: arrayRemove(participantToRemove),
+        participants: updatedParticipants,
         updatedAt: serverTimestamp(),
       }, { merge: true });
 
@@ -142,6 +155,62 @@ export default function App({ sessionId }: AppProps) {
       setIsEditingName(false);
     } catch (error) {
       console.error('Error updating session name:', error);
+    }
+  };
+
+  const handleAssignCare = async (caregiverId: string, careRecipientId: string) => {
+    if (!sessionId || !session) return;
+
+    const caregiver = participants.find((p) => p.id === caregiverId);
+    const careRecipient = participants.find((p) => p.id === careRecipientId);
+
+    if (!caregiver || !careRecipient) return;
+
+    // Validation: caregiver can't already care for someone else
+    if (caregiver.caresFor) {
+      console.error('Caregiver already cares for someone');
+      return;
+    }
+
+    // Validation: care recipient can't already be cared for
+    const isCaredFor = participants.some((p) => p.caresFor === careRecipientId);
+    if (isCaredFor) {
+      console.error('Care recipient is already cared for');
+      return;
+    }
+
+    try {
+      const updatedParticipants = participants.map((p) =>
+        p.id === caregiverId ? { ...p, caresFor: careRecipientId } : p
+      );
+
+      await setDoc(getSessionRef(sessionId), {
+        participants: updatedParticipants,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+    } catch (error) {
+      console.error('Error assigning care:', error);
+    }
+  };
+
+  const handleRemoveCare = async (caregiverId: string) => {
+    if (!sessionId || !session) return;
+
+    try {
+      const updatedParticipants = participants.map((p) => {
+        if (p.id === caregiverId) {
+          const { caresFor, ...rest } = p;
+          return rest;
+        }
+        return p;
+      });
+
+      await setDoc(getSessionRef(sessionId), {
+        participants: updatedParticipants,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+    } catch (error) {
+      console.error('Error removing care:', error);
     }
   };
 
@@ -238,6 +307,8 @@ export default function App({ sessionId }: AppProps) {
             participants={participants}
             balances={balances}
             onRemoveParticipant={handleRemoveParticipant}
+            onAssignCare={handleAssignCare}
+            onRemoveCare={handleRemoveCare}
           />
 
           {/* Main Content */}

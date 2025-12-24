@@ -6,6 +6,7 @@ import {
   DocumentReference,
   CollectionReference,
 } from 'firebase/firestore';
+import { getAuth, signInAnonymously } from 'firebase/auth';
 import { Expense, Session } from './types';
 
 const firebaseConfig = {
@@ -22,6 +23,19 @@ export const db = getFirestore(
   app,
   process.env.NEXT_PUBLIC_FIREBASE_DATABASE_NAME || '(default)'
 );
+
+export const auth = getAuth(app);
+
+// Initialize anonymous authentication
+export const initializeAuth = async () => {
+  try {
+    if (!auth.currentUser) {
+      await signInAnonymously(auth);
+    }
+  } catch (error) {
+    console.error('Error initializing anonymous auth:', error);
+  }
+};
 
 // Collection references
 export const sessionsCollection = collection(db, 'sessions') as CollectionReference<Session>;
