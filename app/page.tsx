@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { setDoc, serverTimestamp } from 'firebase/firestore';
 import { Wallet, Copy, Check } from 'lucide-react';
 import { getSessionRef } from '@/lib/firebase';
+import Toast, { ToastMessage } from '@/components/Toast';
 
 export default function Home() {
   const router = useRouter();
@@ -14,6 +15,16 @@ export default function Home() {
   const [joinSessionId, setJoinSessionId] = useState('');
   const [copied, setCopied] = useState(false);
   const [sessionName, setSessionName] = useState('');
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+
+  const addToast = (type: 'error' | 'success' | 'info', message: string) => {
+    const id = crypto.randomUUID();
+    setToasts((prev) => [...prev, { id, type, message }]);
+  };
+
+  const removeToast = (id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
 
   const handleCreateSession = async () => {
     setIsCreating(true);
@@ -25,17 +36,19 @@ export default function Home() {
       const now = new Date();
       const expiredAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
 
-      await setDoc(
-        getSessionRef(newSessionId),
-        {
-          name: sessionName.trim() || undefined,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-          expiredAt: expiredAt,
-          participants: [],
-        },
-        { merge: true }
-      );
+      const sessionData: any = {
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        expiredAt: expiredAt,
+        participants: [],
+      };
+
+      // Only add name if it's not empty
+      if (sessionName.trim()) {
+        sessionData.name = sessionName.trim();
+      }
+
+      await setDoc(getSessionRef(newSessionId), sessionData, { merge: true });
 
       // Redirect after a short delay
       setTimeout(() => {
@@ -43,7 +56,7 @@ export default function Home() {
       }, 1000);
     } catch (error) {
       console.error('Error creating session:', error);
-      alert('Error al crear la sesión');
+      addToast('error', 'Error al crear la sesión');
     } finally {
       setIsCreating(false);
     }
@@ -78,6 +91,33 @@ export default function Home() {
           <p className="text-xl text-slate-600">
             Divide gastos sin complicaciones en tus juntadas
           </p>
+          <div className="space-y-4 max-w-xl mx-auto">
+            <p className="text-slate-600 text-sm leading-relaxed">
+              Explit te ayuda a dividir gastos de forma justa y sin drama. Gestiona tus sesiones en tres estados: <span className="font-semibold text-slate-900">Creada</span> (edita participantes y gastos), <span className="font-semibold text-slate-900">Habilitada para Pagar</span> (registra quién pagó a quién) y <span className="font-semibold text-slate-900">Completada</span> (solo lectura).
+            </p>
+            <ul className="text-slate-600 text-sm space-y-1">
+              <li className="flex items-start gap-2">
+                <span className="flex-shrink-0">✓</span>
+                <span>Crea sesiones para tus juntadas (duran 30 días)</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="flex-shrink-0">✓</span>
+                <span>Agrega gastos y registra quién pagó</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="flex-shrink-0">✓</span>
+                <span>Una persona puede pagar por otra y asumir su deuda</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="flex-shrink-0">✓</span>
+                <span>Obtén un cálculo optimizado de quién debe a quién</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="flex-shrink-0">✓</span>
+                <span>Marca pagos realizados y mantén un historial</span>
+              </li>
+            </ul>
+          </div>
         </header>
 
         {/* Main Content */}
@@ -187,6 +227,9 @@ export default function Home() {
           <p>Hecho para dividir gastos de forma justa y sin drama.</p>
         </footer>
       </div>
+
+      {/* Toast Notifications */}
+      <Toast toasts={toasts} onRemove={removeToast} />
     </div>
   );
 }

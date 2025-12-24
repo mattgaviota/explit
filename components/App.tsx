@@ -1,16 +1,15 @@
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   addDoc,
   setDoc,
   deleteDoc,
   serverTimestamp,
   arrayUnion,
-  arrayRemove,
-  deleteField,
 } from 'firebase/firestore';
-import { PlusCircle, Receipt, Wallet } from 'lucide-react';
+import { PlusCircle, Receipt, Wallet, Home, Copy, Check } from 'lucide-react';
 import { useSession, useExpenses } from '@/lib/hooks';
 import {
   calculateTotalAmount,
@@ -25,19 +24,73 @@ import ParticipantsList from './ParticipantsList';
 import ExpenseForm from './ExpenseForm';
 import ExpenseList from './ExpenseList';
 import Settlement from './Settlement';
+import Toast, { ToastMessage } from './Toast';
 
 interface AppProps {
   sessionId: string;
 }
 
 export default function App({ sessionId }: AppProps) {
+  const router = useRouter();
   const { session, loading: sessionLoading } = useSession(sessionId);
   const { expenses, loading: expensesLoading } = useExpenses(sessionId);
   const [isAddingExpense, setIsAddingExpense] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editingName, setEditingName] = useState('');
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [copiedSessionId, setCopiedSessionId] = useState(false);
+
+  const addToast = (type: 'error' | 'success' | 'info', message: string) => {
+    const id = crypto.randomUUID();
+    setToasts((prev) => [...prev, { id, type, message }]);
+  };
+
+  const removeToast = (id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  const copySessionId = () => {
+    if (typeof window !== 'undefined') {
+      const url = `${window.location.origin}/gastos/${sessionId}`;
+      navigator.clipboard.writeText(url).then(() => {
+        setCopiedSessionId(true);
+        setTimeout(() => setCopiedSessionId(false), 2000);
+      });
+    }
+  };
+
+  const handleChangeSessionStatus = async (newStatus: 'draft' | 'payment-enabled' | 'completed') => {
+    if (!sessionId || !session) return;
+
+    const hasPayments = (session.completedPayments?.length || 0) > 0;
+
+    // Validations
+    if (newStatus === 'draft' && hasPayments) {
+      addToast('error', 'No se puede volver a modo edición si hay pagos registrados');
+      return;
+    }
+
+    try {
+      await setDoc(getSessionRef(sessionId), {
+        status: newStatus,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+
+      const messages = {
+        draft: 'Sesión en modo edición',
+        'payment-enabled': 'Pagos habilitados',
+        completed: 'Sesión completada',
+      };
+
+      addToast('success', messages[newStatus]);
+    } catch (error) {
+      console.error('Error changing session status:', error);
+      addToast('error', 'Error al cambiar el estado de la sesión');
+    }
+  };
 
   const participants = session?.participants || [];
+  const currentStatus = session?.status || 'draft';
 
   // Calculations
   const totalAmount = useMemo(
@@ -56,13 +109,18 @@ export default function App({ sessionId }: AppProps) {
   );
 
   const settlements = useMemo(
-    () => calculateSettlements(participants, balances),
-    [participants, balances]
+    () => calculateSettlements(participants, balances, session?.completedPayments),
+    [participants, balances, session?.completedPayments]
   );
 
   // Handlers
   const handleAddParticipant = async (name: string) => {
     if (!sessionId || !session) return;
+
+    if (currentStatus !== 'draft') {
+      addToast('error', 'Solo se pueden agregar participantes en modo edición');
+      return;
+    }
 
     const newParticipant: Participant = {
       id: crypto.randomUUID(),
@@ -83,8 +141,23 @@ export default function App({ sessionId }: AppProps) {
   const handleRemoveParticipant = async (id: string) => {
     if (!sessionId || !session) return;
 
+    if (currentStatus !== 'draft') {
+      addToast('error', 'Solo se pueden eliminar participantes en modo edición');
+      return;
+    }
+
     const participantToRemove = participants.find((p) => p.id === id);
     if (!participantToRemove) return;
+
+    // Check if participant has made any payments
+    const hasCompletedPayments = session.completedPayments?.some(
+      (p) => p.from === id || p.to === id
+    );
+
+    if (hasCompletedPayments) {
+      addToast('error', 'No se puede eliminar participante que ha realizado pagos');
+      return;
+    }
 
     try {
       // If removing a caregiver, free those being cared for
@@ -122,6 +195,11 @@ export default function App({ sessionId }: AppProps) {
   ) => {
     if (!sessionId) return;
 
+    if (currentStatus !== 'draft') {
+      addToast('error', 'Solo se pueden agregar gastos en modo edición');
+      return;
+    }
+
     try {
       await addDoc(getExpensesCollection(sessionId), {
         description,
@@ -137,6 +215,11 @@ export default function App({ sessionId }: AppProps) {
   const handleDeleteExpense = async (id: string) => {
     if (!sessionId) return;
 
+    if (currentStatus !== 'draft') {
+      addToast('error', 'Solo se pueden eliminar gastos en modo edición');
+      return;
+    }
+
     try {
       await deleteDoc(getExpenseRef(sessionId, id));
     } catch (error) {
@@ -147,9 +230,18 @@ export default function App({ sessionId }: AppProps) {
   const handleUpdateSessionName = async (newName: string) => {
     if (!sessionId) return;
 
+    const trimmedName = newName.trim();
+
+    // Validate that name is not empty
+    if (!trimmedName) {
+      addToast('error', 'El nombre de la sesión no puede estar vacío');
+      setIsEditingName(false);
+      return;
+    }
+
     try {
       await setDoc(getSessionRef(sessionId), {
-        name: newName.trim() || undefined,
+        name: trimmedName,
         updatedAt: serverTimestamp(),
       }, { merge: true });
       setIsEditingName(false);
@@ -160,6 +252,11 @@ export default function App({ sessionId }: AppProps) {
 
   const handleAssignCare = async (caregiverId: string, careRecipientId: string) => {
     if (!sessionId || !session) return;
+
+    if (currentStatus !== 'draft') {
+      addToast('error', 'Solo se pueden cambiar relaciones de cuidado en modo edición');
+      return;
+    }
 
     const caregiver = participants.find((p) => p.id === caregiverId);
     const careRecipient = participants.find((p) => p.id === careRecipientId);
@@ -196,6 +293,11 @@ export default function App({ sessionId }: AppProps) {
   const handleRemoveCare = async (caregiverId: string) => {
     if (!sessionId || !session) return;
 
+    if (currentStatus !== 'draft') {
+      addToast('error', 'Solo se pueden cambiar relaciones de cuidado en modo edición');
+      return;
+    }
+
     try {
       const updatedParticipants = participants.map((p) => {
         if (p.id === caregiverId) {
@@ -211,6 +313,32 @@ export default function App({ sessionId }: AppProps) {
       }, { merge: true });
     } catch (error) {
       console.error('Error removing care:', error);
+    }
+  };
+
+  const handlePaymentMade = async (from: string, to: string, amount: number) => {
+    if (!sessionId || !session) return;
+
+    if (currentStatus !== 'payment-enabled') {
+      addToast('error', 'Los pagos solo se pueden registrar cuando están habilitados');
+      return;
+    }
+
+    try {
+      const completedPayments = [...(session.completedPayments || [])];
+      completedPayments.push({
+        from,
+        to,
+        amount,
+        paidAt: new Date(),
+      });
+
+      await setDoc(getSessionRef(sessionId), {
+        completedPayments,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+    } catch (error) {
+      console.error('Error marking payment as made:', error);
     }
   };
 
@@ -246,9 +374,27 @@ export default function App({ sessionId }: AppProps) {
         {/* Header */}
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-indigo-600 flex items-center gap-2">
-              <Wallet className="w-8 h-8" /> Explit
-            </h1>
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-3xl font-bold tracking-tight text-indigo-600 flex items-center gap-2">
+                <button
+                  onClick={() => router.push('/')}
+                  className="text-slate-400 hover:text-slate-600 transition-colors p-2 hover:bg-slate-100 rounded-lg"
+                  title="Volver al inicio"
+                >
+                  <Home className="w-6 h-6" />
+                </button>
+                <Wallet className="w-8 h-8" /> Explit
+              </h1>
+              <div className={`px-3 py-1.5 rounded-full text-xs font-bold ${
+                currentStatus === 'draft' ? 'bg-slate-100 text-slate-700' :
+                currentStatus === 'payment-enabled' ? 'bg-amber-100 text-amber-700' :
+                'bg-emerald-100 text-emerald-700'
+              }`}>
+                {currentStatus === 'draft' ? 'Edición' :
+                 currentStatus === 'payment-enabled' ? 'Pagos' :
+                 'Completada'}
+              </div>
+            </div>
             <div className="mt-3 flex items-center gap-2">
               {isEditingName ? (
                 <input
@@ -281,23 +427,101 @@ export default function App({ sessionId }: AppProps) {
             <p className="text-slate-500 mt-1">
               Divide gastos sin complicaciones en tus juntadas.
             </p>
+            <div className="mt-3 space-y-2">
+              <p className="text-xs text-slate-500">
+                Comparte esta sesión con tus amigos para que todos contribuyan:
+              </p>
+              <button
+                onClick={copySessionId}
+                className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition-colors"
+                title="Copiar enlace de sesión"
+              >
+                {copiedSessionId ? (
+                  <>
+                    <Check className="w-3.5 h-3.5" />
+                    <span>ID copiado</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    <span className="font-mono text-slate-600">{sessionId.slice(0, 8)}...</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
-          <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex gap-6 items-center">
-            <div>
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                Total Gastado
-              </p>
-              <p className="text-2xl font-bold">${totalAmount.toLocaleString()}</p>
+          <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 space-y-3">
+            <div className="flex gap-6 items-center">
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  Total Gastado
+                </p>
+                <p className="text-2xl font-bold">${totalAmount.toLocaleString()}</p>
+              </div>
+              <div className="w-px h-10 bg-slate-100" />
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  Por persona
+                </p>
+                <p className="text-2xl font-bold text-indigo-600">
+                  ${perPersonAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                </p>
+              </div>
             </div>
-            <div className="w-px h-10 bg-slate-100" />
-            <div>
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                Por persona
-              </p>
-              <p className="text-2xl font-bold text-indigo-600">
-                ${perPersonAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-              </p>
-            </div>
+
+            {/* Status Change Button */}
+            {currentStatus === 'draft' && (
+              <button
+                onClick={() => handleChangeSessionStatus('payment-enabled')}
+                disabled={participants.length < 2 || expenses.length === 0}
+                className={`w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  participants.length < 2 || expenses.length === 0
+                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                    : 'bg-amber-600 hover:bg-amber-700 text-white'
+                }`}
+                title={
+                  participants.length < 2
+                    ? 'Necesitas al menos 2 participantes'
+                    : expenses.length === 0
+                    ? 'Necesitas al menos 1 gasto registrado'
+                    : undefined
+                }
+              >
+                Habilitar Pagos
+              </button>
+            )}
+
+            {currentStatus === 'payment-enabled' && (
+              <div className="space-y-2">
+                {(session?.completedPayments?.length || 0) === 0 && (
+                  <button
+                    onClick={() => handleChangeSessionStatus('draft')}
+                    className="w-full px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg text-sm font-medium transition-colors"
+                  >
+                    Volver a Editar
+                  </button>
+                )}
+
+                {(session?.completedPayments?.length || 0) > 0 && (
+                  <div className="text-xs text-slate-500 flex items-center justify-center gap-1 py-2">
+                    🔒 No se puede volver (hay pagos registrados)
+                  </div>
+                )}
+
+                {settlements.length > 0 && settlements.every((s) => s.paid) && (
+                  <button
+                    onClick={() => handleChangeSessionStatus('completed')}
+                    className="w-full px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition-colors"
+                  >
+                    Marcar Completada
+                  </button>
+                )}
+              </div>
+            )}
+
+            {currentStatus === 'completed' && (
+              <p className="text-xs text-slate-500 text-center py-2">✓ Sesión finalizada</p>
+            )}
           </div>
         </header>
 
@@ -328,10 +552,16 @@ export default function App({ sessionId }: AppProps) {
                   <Receipt className="w-6 h-6 text-indigo-500" /> Gastos de la Juntada
                 </h2>
                 <button
-                  onClick={() => setIsAddingExpense(true)}
-                  disabled={participants.length === 0}
+                  onClick={() => {
+                    if (currentStatus !== 'draft') {
+                      addToast('error', 'Solo se pueden agregar gastos en modo edición');
+                      return;
+                    }
+                    setIsAddingExpense(true);
+                  }}
+                  disabled={participants.length === 0 || currentStatus !== 'draft'}
                   className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl font-semibold transition-all shadow-lg ${
-                    participants.length === 0
+                    participants.length === 0 || currentStatus !== 'draft'
                       ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
                       : 'bg-indigo-600 text-white hover:bg-indigo-700 hover:-translate-y-0.5 shadow-indigo-200'
                   }`}
@@ -349,7 +579,12 @@ export default function App({ sessionId }: AppProps) {
             </div>
 
             {/* Settlement */}
-            <Settlement settlements={settlements} participants={participants} />
+            <Settlement
+              settlements={settlements}
+              participants={participants}
+              onPaymentMade={handlePaymentMade}
+              sessionStatus={currentStatus as 'draft' | 'payment-enabled' | 'completed'}
+            />
           </main>
         </div>
 
@@ -366,6 +601,9 @@ export default function App({ sessionId }: AppProps) {
           Hecho para dividir gastos de forma justa y sin drama.
         </footer>
       </div>
+
+      {/* Toast Notifications */}
+      <Toast toasts={toasts} onRemove={removeToast} />
     </div>
   );
 }

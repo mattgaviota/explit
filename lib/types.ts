@@ -21,12 +21,20 @@ export interface Session {
   updatedAt: Date;
   expiredAt: Date;
   participants: Participant[];
+  completedPayments?: Array<{
+    from: string;
+    to: string;
+    amount: number;
+    paidAt: Date;
+  }>;
+  status?: 'draft' | 'payment-enabled' | 'completed';
 }
 
 export interface Settlement {
   from: string;
   to: string;
   amount: number;
+  paid?: boolean;
 }
 
 export interface Balances {

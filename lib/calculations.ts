@@ -64,7 +64,8 @@ export function calculateBalances(
 
 export function calculateSettlements(
   participants: Participant[],
-  balances: Balances
+  balances: Balances,
+  completedPayments?: Array<{ from: string; to: string; amount: number }>
 ): Settlement[] {
   if (participants.length < 2) return [];
 
@@ -86,11 +87,23 @@ export function calculateSettlements(
 
   while (i < d.length && j < c.length) {
     const payment = Math.min(d[i].amount, c[j].amount);
-    results.push({
+    const settlement: Settlement = {
       from: d[i].id,
       to: c[j].id,
       amount: payment,
-    });
+    };
+
+    // Mark as paid if it matches a completed payment
+    if (completedPayments) {
+      settlement.paid = completedPayments.some(
+        (p) =>
+          p.from === settlement.from &&
+          p.to === settlement.to &&
+          Math.abs(p.amount - settlement.amount) < 0.01
+      );
+    }
+
+    results.push(settlement);
 
     d[i].amount -= payment;
     c[j].amount -= payment;

@@ -100,12 +100,17 @@ export default function ParticipantsList({
                       <span className="font-medium">{p.name}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      {/* Care assignment dropdown - always visible */}
+                      {/* Care assignment dropdown - only available with 3+ participants */}
                       <div className="relative">
                         <button
                           onClick={() => setShowCareDropdown(showCareDropdown === p.id ? null : p.id)}
-                          className="text-indigo-500 hover:text-indigo-700 p-1 transition-colors hover:bg-indigo-50 rounded-lg"
-                          title="Hacerse cargo de otro"
+                          disabled={participants.length < 3}
+                          className={`p-1 transition-colors rounded-lg ${
+                            participants.length < 3
+                              ? 'text-slate-300 cursor-not-allowed'
+                              : 'text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50'
+                          }`}
+                          title="Pagar juntos"
                         >
                           <Plus className="w-5 h-5" />
                         </button>
