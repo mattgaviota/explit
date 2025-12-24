@@ -46,7 +46,6 @@ COPY nginx.conf /etc/nginx/nginx.conf
 
 # Copy built app from builder stage
 COPY --from=builder /app/.next/standalone ./app
-COPY --from=builder /app/public ./app/public
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
