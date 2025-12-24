@@ -50,17 +50,33 @@ stages:
           # Save Docker image to tar file
           - script: |
               mkdir -p $(artifactPath)
-              docker save $(imageName):$(imageTag) -o $(artifactPath)/$(imageName)-$(imageTag).tar
-              echo "Docker image saved to $(artifactPath)/$(imageName)-$(imageTag).tar"
+              TAR_FILE="$(artifactPath)/$(imageName)-$(imageTag).tar"
+              echo "Saving Docker image to: $TAR_FILE"
+              docker save $(imageName):$(imageTag) -o "$TAR_FILE"
+              if [ -f "$TAR_FILE" ]; then
+                echo "Docker image saved successfully"
+                ls -lh "$TAR_FILE"
+              else
+                echo "ERROR: Failed to save Docker image"
+                exit 1
+              fi
             displayName: 'Save Docker Image to TAR'
 
           # Compress the tar file with gzip
           - script: |
-              cd $(artifactPath)
-              gzip $(imageName)-$(imageTag).tar
-              ls -lh $(imageName)-$(imageTag).tar.gz
-              echo "Compressed size:"
-              du -h $(imageName)-$(imageTag).tar.gz
+              TAR_FILE="$(artifactPath)/$(imageName)-$(imageTag).tar"
+              GZIP_FILE="$TAR_FILE.gz"
+              echo "Compressing: $TAR_FILE"
+              gzip "$TAR_FILE"
+              if [ -f "$GZIP_FILE" ]; then
+                echo "Compression successful"
+                ls -lh "$GZIP_FILE"
+                echo "Compressed size:"
+                du -h "$GZIP_FILE"
+              else
+                echo "ERROR: Compression failed"
+                exit 1
+              fi
             displayName: 'Compress Docker Image with GZIP'
 
           # Create metadata file
