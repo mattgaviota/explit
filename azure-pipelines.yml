@@ -69,6 +69,9 @@ stages:
               TargetFolder: '$(Build.ArtifactStagingDirectory)'
               CleanTargetFolder: false
               preserveTimestamp: true
+          - script: |
+              echo $(imageName):$(imageTag) > $(Build.ArtifactStagingDirectory)/tag.txt
+            displayName: 'Save tag to get in release pipeline'
           - task: PublishBuildArtifacts@1
             displayName: 'Publish Artifact'
             inputs:
