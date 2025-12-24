@@ -50,13 +50,10 @@ export default function App({ sessionId }: AppProps) {
   };
 
   const copySessionId = () => {
-    if (typeof window !== 'undefined') {
-      const url = `${window.location.origin}/gastos/${sessionId}`;
-      navigator.clipboard.writeText(url).then(() => {
-        setCopiedSessionId(true);
-        setTimeout(() => setCopiedSessionId(false), 2000);
-      });
-    }
+    navigator.clipboard.writeText(sessionId).then(() => {
+      setCopiedSessionId(true);
+      setTimeout(() => setCopiedSessionId(false), 2000);
+    });
   };
 
   const handleChangeSessionStatus = async (newStatus: 'draft' | 'payment-enabled' | 'completed') => {
