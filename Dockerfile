@@ -36,23 +36,27 @@ ENV NEXT_PUBLIC_FIREBASE_DATABASE_NAME=$NEXT_PUBLIC_FIREBASE_DATABASE_NAME
 # Build Next.js
 RUN npm run build
 
-# Runtime stage: nginx
-FROM nginx:1.27-alpine
+# Runtime stage: Node
+FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy nginx config
-COPY nginx.conf /etc/nginx/nginx.conf
-
-# Copy built app from builder stage
-COPY --from=builder /app/.next/standalone ./app
+# Copy entire standalone output which includes server.js, .next, node_modules, and package.json
+COPY --from=builder /app/.next/standalone/ .
+# Also copy .next files for static assets
+COPY --from=builder /app/.next/static ./.next/static
+# Copy public folder (favicon, icons, etc)
+COPY --from=builder /app/public ./public
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
+    CMD node -e "require('http').get('http://localhost:3000', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})" || exit 1
 
 # Expose port
 EXPOSE 3000
 
-# Start nginx
-CMD ["nginx", "-g", "daemon off;"]
+# Set production environment
+ENV NODE_ENV=production
+
+# Start Next.js server
+CMD ["node", "server.js"]
