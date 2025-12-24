@@ -47,65 +47,35 @@ stages:
                 --build-arg NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=$(NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID)
                 --build-arg NEXT_PUBLIC_FIREBASE_DATABASE_NAME=$(NEXT_PUBLIC_FIREBASE_DATABASE_NAME)
 
-          # Save Docker image to tar file
-          - script: |
-              mkdir -p $(artifactPath)
-              TAR_FILE="$(artifactPath)/$(imageName)-$(imageTag).tar"
-              echo "Saving Docker image to: $TAR_FILE"
-              docker save $(imageName):$(imageTag) -o "$TAR_FILE"
-              if [ -f "$TAR_FILE" ]; then
-                echo "Docker image saved successfully"
-                ls -lh "$TAR_FILE"
-              else
-                echo "ERROR: Failed to save Docker image"
-                exit 1
-              fi
-            displayName: 'Save Docker Image to TAR'
-
-          # Compress the tar file with gzip
-          - script: |
-              TAR_FILE="$(artifactPath)/$(imageName)-$(imageTag).tar"
-              GZIP_FILE="$TAR_FILE.gz"
-              echo "Compressing: $TAR_FILE"
-              gzip "$TAR_FILE"
-              if [ -f "$GZIP_FILE" ]; then
-                echo "Compression successful"
-                ls -lh "$GZIP_FILE"
-                echo "Compressed size:"
-                du -h "$GZIP_FILE"
-              else
-                echo "ERROR: Compression failed"
-                exit 1
-              fi
-            displayName: 'Compress Docker Image with GZIP'
-
-          # Create metadata file
-          - script: |
-              cat > $(artifactPath)/image-metadata.json << EOF
-              {
-                "imageName": "$(imageName)",
-                "imageTag": "$(imageTag)",
-                "buildId": "$(Build.BuildId)",
-                "sourceVersion": "$(Build.SourceVersion)",
-                "buildTime": "$(System.CollectionUri)",
-                "repository": "$(Build.Repository.Name)",
-                "branch": "$(Build.SourceBranch)"
-              }
-              EOF
-              cat $(artifactPath)/image-metadata.json
-            displayName: 'Create Metadata File'
-
-          # Publish artifact
-          - task: PublishBuildArtifacts@1
-            displayName: 'Publish Docker Image Artifact'
+          - task: PowerShell@2
             inputs:
-              pathToPublish: '$(artifactPath)'
-              artifactName: '$(artifactName)-$(imageTag)'
-              publishLocation: 'Container'
-
-          # Log artifact info
+              targetType: 'inline'
+              script: |
+                docker image save -o $(Build.SourcesDirectory)/image.tar $(imageName):$(imageTag)
+          - task: CopyFiles@2
+            displayName: 'Copy Files images'
+            inputs:
+              SourceFolder: '$(Build.SourcesDirectory)'
+              Contents: 'image.tar'
+              TargetFolder: '$(Build.ArtifactStagingDirectory)'
+              CleanTargetFolder: true
+              preserveTimestamp: true
           - script: |
-              echo "Artifact published: $(artifactName)-$(imageTag)"
-              echo "Files in artifact:"
-              ls -lh $(artifactPath)
-            displayName: 'Log Artifact Information'
+              sed -i "s/latest/$(imageTag)/" ./k8s/definition.yaml
+            displayName: 'Set version in Kubernetes definition'
+          - script: |
+              sed -i "s/imageName/$(imageName)/" ./k8s/definition.yaml
+            displayName: 'Set image name in Kubernetes definition'
+          - task: CopyFiles@2
+            displayName: 'Copy Files kubernetes definition'
+            inputs:
+              SourceFolder: '$(Build.SourcesDirectory)/k8s'
+              Contents: '*'
+              TargetFolder: '$(Build.ArtifactStagingDirectory)'
+              CleanTargetFolder: false
+              preserveTimestamp: true
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish Artifact'
+            inputs:
+              PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+              ArtifactName: image-$(imageName)
