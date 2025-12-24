@@ -25,6 +25,7 @@ import ExpenseForm from './ExpenseForm';
 import ExpenseList from './ExpenseList';
 import Settlement from './Settlement';
 import Toast, { ToastMessage } from './Toast';
+import BalancesCard from './BalancesCard';
 
 interface AppProps {
   sessionId: string;
@@ -369,7 +370,7 @@ export default function App({ sessionId }: AppProps) {
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans p-4 md:p-8">
       <div className="max-w-4xl mx-auto space-y-8">
         {/* Header */}
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <header className="sticky top-0 md:static bg-slate-50 z-40 -mx-4 md:mx-0 px-4 md:px-0 py-4 md:py-0 md:bg-transparent flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-3 mb-2">
               <h1 className="text-3xl font-bold tracking-tight text-indigo-600 flex items-center gap-2">
@@ -522,18 +523,90 @@ export default function App({ sessionId }: AppProps) {
           </div>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-          {/* Sidebar */}
+        {/* Mobile: Full width content in correct order */}
+        <div className="md:hidden space-y-8">
+          {/* 1. Participantes */}
           <ParticipantsList
             participants={participants}
-            balances={balances}
             onRemoveParticipant={handleRemoveParticipant}
             onAssignCare={handleAssignCare}
             onRemoveCare={handleRemoveCare}
           />
 
+          {/* 2. Add Participant */}
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+            <h2 className="text-lg font-bold mb-4">Agregar Participante</h2>
+            <ParticipantForm
+              onAddParticipant={handleAddParticipant}
+            />
+          </div>
+
+          {/* 3. Expenses Section */}
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <Receipt className="w-6 h-6 text-indigo-500" /> Gastos de la Juntada
+              </h2>
+              <button
+                onClick={() => {
+                  if (currentStatus !== 'draft') {
+                    addToast('error', 'Solo se pueden agregar gastos en modo edición');
+                    return;
+                  }
+                  setIsAddingExpense(true);
+                }}
+                disabled={participants.length === 0 || currentStatus !== 'draft'}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl font-semibold transition-all shadow-lg ${
+                  participants.length === 0 || currentStatus !== 'draft'
+                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                    : 'bg-indigo-600 text-white hover:bg-indigo-700 hover:-translate-y-0.5 shadow-indigo-200'
+                }`}
+              >
+                <PlusCircle className="w-5 h-5" /> Registrar Gasto
+              </button>
+            </div>
+
+            <ExpenseList
+              expenses={expenses}
+              participants={participants}
+              onDeleteExpense={handleDeleteExpense}
+              isLoading={expensesLoading}
+            />
+          </div>
+
+          {/* 4. Balances */}
+          <BalancesCard
+            participants={participants}
+            balances={balances}
+          />
+
+          {/* 5. Settlement */}
+          <Settlement
+            settlements={settlements}
+            participants={participants}
+            onPaymentMade={handlePaymentMade}
+            sessionStatus={currentStatus as 'draft' | 'payment-enabled' | 'completed'}
+          />
+        </div>
+
+        {/* Desktop: Sidebar in grid */}
+        <div className="hidden md:grid grid-cols-12 gap-8">
+          {/* Sidebar */}
+          <div className="col-span-4 space-y-6">
+            <ParticipantsList
+              participants={participants}
+              onRemoveParticipant={handleRemoveParticipant}
+              onAssignCare={handleAssignCare}
+              onRemoveCare={handleRemoveCare}
+            />
+            <BalancesCard
+              participants={participants}
+              balances={balances}
+            />
+          </div>
+
           {/* Main Content */}
-          <main className="md:col-span-8 space-y-8">
+          <main className="col-span-8 space-y-8">
             {/* Add Participant */}
             <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
               <h2 className="text-lg font-bold mb-4">Agregar Participante</h2>

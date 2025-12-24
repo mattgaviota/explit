@@ -45,25 +45,27 @@ export default function Settlement({ settlements, participants, onPaymentMade, s
             {pendingPayments.map((s, idx) => (
               <div
                 key={idx}
-                className="bg-white/60 backdrop-blur-sm p-4 rounded-2xl flex items-center justify-between shadow-sm border border-white hover:shadow-md transition-shadow"
+                className="bg-white/60 backdrop-blur-sm p-4 rounded-2xl shadow-sm border border-white hover:shadow-md transition-shadow space-y-3"
               >
-                <div className="flex items-center gap-3">
-                  <span className="font-bold text-slate-700">{getParticipantName(s.from)}</span>
-                  <div className="flex items-center gap-1 text-emerald-600">
-                    <div className="h-px w-8 bg-emerald-200" />
-                    <ArrowRightLeft className="w-4 h-4" />
-                    <div className="h-px w-8 bg-emerald-200" />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-slate-700">{getParticipantName(s.from)}</span>
+                    <div className="flex items-center gap-1 text-emerald-600">
+                      <div className="h-px w-4 bg-emerald-200" />
+                      <ArrowRightLeft className="w-3 h-3" />
+                      <div className="h-px w-4 bg-emerald-200" />
+                    </div>
+                    <span className="font-bold text-slate-700">{getParticipantName(s.to)}</span>
                   </div>
-                  <span className="font-bold text-slate-700">{getParticipantName(s.to)}</span>
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="bg-emerald-600 text-white px-4 py-1.5 rounded-xl font-bold text-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="bg-emerald-600 text-white px-4 py-1.5 rounded-xl font-bold text-sm whitespace-nowrap">
                     Debe pagar ${s.amount.toFixed(2)}
                   </div>
                   {onPaymentMade && sessionStatus === 'payment-enabled' && (
                     <button
                       onClick={() => onPaymentMade(s.from, s.to, s.amount)}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded-xl font-bold text-sm transition-colors"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl font-bold text-sm transition-colors whitespace-nowrap"
                     >
                       Pagar
                     </button>
@@ -82,22 +84,24 @@ export default function Settlement({ settlements, participants, onPaymentMade, s
             {completedPayments.map((s, idx) => (
               <div
                 key={idx}
-                className="bg-emerald-100/40 backdrop-blur-sm p-4 rounded-2xl flex items-center justify-between shadow-sm border border-emerald-200"
+                className="bg-emerald-100/40 backdrop-blur-sm p-4 rounded-2xl shadow-sm border border-emerald-200 space-y-3"
               >
-                <div className="flex items-center gap-3">
-                  <span className="font-bold text-slate-600 line-through">{getParticipantName(s.from)}</span>
-                  <div className="flex items-center gap-1 text-emerald-600">
-                    <div className="h-px w-8 bg-emerald-200" />
-                    <ArrowRightLeft className="w-4 h-4" />
-                    <div className="h-px w-8 bg-emerald-200" />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-slate-600 line-through">{getParticipantName(s.from)}</span>
+                    <div className="flex items-center gap-1 text-emerald-600">
+                      <div className="h-px w-4 bg-emerald-200" />
+                      <ArrowRightLeft className="w-3 h-3" />
+                      <div className="h-px w-4 bg-emerald-200" />
+                    </div>
+                    <span className="font-bold text-slate-600 line-through">{getParticipantName(s.to)}</span>
                   </div>
-                  <span className="font-bold text-slate-600 line-through">{getParticipantName(s.to)}</span>
                 </div>
-                <div className="flex items-center gap-3 text-emerald-700">
+                <div className="flex items-center justify-between gap-2 text-emerald-700">
                   <div className="font-bold text-sm">
                     Pagó ${s.amount.toFixed(2)}
                   </div>
-                  <Check className="w-5 h-5 text-emerald-600" />
+                  <Check className="w-5 h-5 text-emerald-600 flex-shrink-0" />
                 </div>
               </div>
             ))}
