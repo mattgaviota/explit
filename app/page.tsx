@@ -21,21 +21,21 @@ export default function Home() {
       const newSessionId = crypto.randomUUID();
       setSessionId(newSessionId);
 
-      console.log('Creating session:', newSessionId);
-
       // Create session in Firestore
+      const now = new Date();
+      const expiredAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
+
       await setDoc(
         getSessionRef(newSessionId),
         {
           name: sessionName.trim() || undefined,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
+          expiredAt: expiredAt,
           participants: [],
         },
         { merge: true }
       );
-
-      console.log('Session created successfully');
 
       // Redirect after a short delay
       setTimeout(() => {
@@ -43,8 +43,7 @@ export default function Home() {
       }, 1000);
     } catch (error) {
       console.error('Error creating session:', error);
-      console.error('Error details:', error instanceof Error ? error.message : 'Unknown error');
-      alert(`Error al crear la sesión: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      alert('Error al crear la sesión');
     } finally {
       setIsCreating(false);
     }

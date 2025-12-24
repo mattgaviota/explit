@@ -18,6 +18,7 @@ export interface Session {
   name?: string;
   createdAt: Date;
   updatedAt: Date;
+  expiredAt: Date;
   participants: Participant[];
 }
 
