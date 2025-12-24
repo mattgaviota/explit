@@ -21,6 +21,8 @@ export default function Home() {
       const newSessionId = crypto.randomUUID();
       setSessionId(newSessionId);
 
+      console.log('Creating session:', newSessionId);
+
       // Create session in Firestore
       await setDoc(
         getSessionRef(newSessionId),
@@ -33,13 +35,16 @@ export default function Home() {
         { merge: true }
       );
 
+      console.log('Session created successfully');
+
       // Redirect after a short delay
       setTimeout(() => {
         router.push(`/gastos/${newSessionId}`);
       }, 1000);
     } catch (error) {
       console.error('Error creating session:', error);
-      alert('Error al crear la sesión');
+      console.error('Error details:', error instanceof Error ? error.message : 'Unknown error');
+      alert(`Error al crear la sesión: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsCreating(false);
     }
