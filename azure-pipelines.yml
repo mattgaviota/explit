@@ -32,7 +32,7 @@ stages:
               command: 'build'
               repository: $(imageName)
               tags: |
-                $(imageName):$(imageTag)
+                $(imageTag)
               arguments: |
                 --build-arg NEXT_PUBLIC_FIREBASE_API_KEY=$(NEXT_PUBLIC_FIREBASE_API_KEY)
                 --build-arg NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=$(NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN)
