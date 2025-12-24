@@ -20,11 +20,6 @@ spec:
               memory: 200Mi
             requests:
               memory: 20Mi
-          envFrom:
-            - secretRef:
-                name: secrets
-            - configMapRef:
-                name: cluster-map
       imagePullSecrets:
         - name: nuntiusregistry
 ---
