@@ -25,9 +25,6 @@ export function calculateBalances(
     }
   });
 
-  // Get only active participants (those who don't have someone caring for them)
-  const activeParticipants = participants.filter((p) => !caredByMap[p.id]);
-
   // Initialize all participants with 0 balance
   participants.forEach((p) => {
     balances[p.id] = 0;
@@ -40,11 +37,10 @@ export function calculateBalances(
     }
   });
 
-  // Each person owes the split average (only active participants count)
   const totalAmount = calculateTotalAmount(expenses);
-  const perPersonAmount = calculatePerPersonAmount(totalAmount, activeParticipants.length);
+  const perPersonAmount = calculatePerPersonAmount(totalAmount, participants.length);
 
-  activeParticipants.forEach((p) => {
+  participants.forEach((p) => {
     balances[p.id] -= perPersonAmount;
   });
 
