@@ -95,7 +95,7 @@ export default function Home() {
             <p className="text-slate-600 text-sm leading-relaxed">
               Explit te ayuda a dividir gastos de forma justa y sin drama. Gestiona tus sesiones en tres estados: <span className="font-semibold text-slate-900">Creada</span> (edita participantes y gastos), <span className="font-semibold text-slate-900">Habilitada para Pagar</span> (registra quién pagó a quién) y <span className="font-semibold text-slate-900">Completada</span> (solo lectura).
             </p>
-            <ul className="text-slate-600 text-sm space-y-1">
+            <ul className="text-slate-600 text-sm space-y-1 text-left">
               <li className="flex items-start gap-2">
                 <span className="flex-shrink-0">✓</span>
                 <span>Crea sesiones para tus juntadas (duran 30 días)</span>
@@ -106,7 +106,7 @@ export default function Home() {
               </li>
               <li className="flex items-start gap-2">
                 <span className="flex-shrink-0">✓</span>
-                <span>Una persona puede pagar por otra y asumir su deuda</span>
+                <span>Una persona puede pagar por otra u otras y asumir su deuda</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="flex-shrink-0">✓</span>
@@ -115,6 +115,10 @@ export default function Home() {
               <li className="flex items-start gap-2">
                 <span className="flex-shrink-0">✓</span>
                 <span>Marca pagos realizados y mantén un historial</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="flex-shrink-0">✓</span>
+                <span>Sin registro de datos: no guardamos tu información ni te asociamos con las sesiones</span>
               </li>
             </ul>
           </div>
