@@ -2,7 +2,7 @@ export interface Participant {
   id: string;
   name: string;
   color: string;
-  caresFor?: string;
+  caresFor?: string[];
 }
 
 export interface Expense {

@@ -21,7 +21,9 @@ export function calculateBalances(
   const caredByMap: { [id: string]: string } = {};
   participants.forEach((p) => {
     if (p.caresFor) {
-      caredByMap[p.caresFor] = p.id;
+      p.caresFor.forEach((recipientId) => {
+        caredByMap[recipientId] = p.id;
+      });
     }
   });
 
@@ -44,14 +46,15 @@ export function calculateBalances(
     balances[p.id] -= perPersonAmount;
   });
 
-  // If a participant cares for another, add the cared person's debt to the caregiver
+  // Caregiver assumes each care recipient's debt (not their credit)
   participants.forEach((p) => {
-    if (p.caresFor && balances[p.caresFor] !== undefined) {
-      // Caregiver assumes the care recipient's debt
-      const careRecipientId = p.caresFor;
-      balances[p.id] += balances[careRecipientId];
-      // Care recipient balance becomes 0 (handled by caregiver)
-      balances[careRecipientId] = 0;
+    if (p.caresFor && p.caresFor.length > 0) {
+      p.caresFor.forEach((recipientId) => {
+        if (balances[recipientId] !== undefined && balances[recipientId] < 0) {
+          balances[p.id] += balances[recipientId];
+          balances[recipientId] = 0;
+        }
+      });
     }
   });
 

@@ -3,7 +3,16 @@
 import { useState, useEffect } from 'react';
 import { onSnapshot } from 'firebase/firestore';
 import { getSessionRef, getExpensesCollection } from './firebase';
-import { Expense, Session } from './types';
+import { Expense, Participant, Session } from './types';
+
+const normalizeParticipant = (p: any): Participant => {
+  const { caresFor, ...rest } = p;
+  if (caresFor === undefined) return rest as Participant;
+  return {
+    ...rest,
+    caresFor: Array.isArray(caresFor) ? caresFor : [caresFor],
+  } as Participant;
+};
 
 export function useSession(sessionId: string) {
   const [session, setSession] = useState<Session | null>(null);
@@ -25,6 +34,7 @@ export function useSession(sessionId: string) {
           setSession({
             ...data,
             id: docSnap.id,
+            participants: (data.participants || []).map(normalizeParticipant),
           } as Session);
           setError(null);
         } else {

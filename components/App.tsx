@@ -158,17 +158,17 @@ export default function App({ sessionId }: AppProps) {
     }
 
     try {
-      // If removing a caregiver, free those being cared for
+      // Remove participant and clean up any caresFor references to them
       let updatedParticipants = participants.filter((p) => p.id !== id);
-      if (participantToRemove.caresFor) {
-        updatedParticipants = updatedParticipants.map((p) => {
-          if (p.caresFor === id) {
-            const { caresFor, ...rest } = p;
-            return rest;
-          }
-          return p;
-        });
-      }
+      updatedParticipants = updatedParticipants.map((p) => {
+        if (!p.caresFor?.includes(id)) return p;
+        const newCaresFor = p.caresFor.filter((rid) => rid !== id);
+        if (newCaresFor.length === 0) {
+          const { caresFor, ...rest } = p;
+          return rest;
+        }
+        return { ...p, caresFor: newCaresFor };
+      });
 
       // Remove participant
       await setDoc(getSessionRef(sessionId), {
@@ -248,7 +248,7 @@ export default function App({ sessionId }: AppProps) {
     }
   };
 
-  const handleAssignCare = async (caregiverId: string, careRecipientId: string) => {
+  const handleAssignCare = async (caregiverId: string, recipientIds: string[]) => {
     if (!sessionId || !session) return;
 
     if (currentStatus !== 'draft') {
@@ -256,27 +256,11 @@ export default function App({ sessionId }: AppProps) {
       return;
     }
 
-    const caregiver = participants.find((p) => p.id === caregiverId);
-    const careRecipient = participants.find((p) => p.id === careRecipientId);
-
-    if (!caregiver || !careRecipient) return;
-
-    // Validation: caregiver can't already care for someone else
-    if (caregiver.caresFor) {
-      console.error('Caregiver already cares for someone');
-      return;
-    }
-
-    // Validation: care recipient can't already be cared for
-    const isCaredFor = participants.some((p) => p.caresFor === careRecipientId);
-    if (isCaredFor) {
-      console.error('Care recipient is already cared for');
-      return;
-    }
+    if (recipientIds.length === 0) return;
 
     try {
       const updatedParticipants = participants.map((p) =>
-        p.id === caregiverId ? { ...p, caresFor: careRecipientId } : p
+        p.id === caregiverId ? { ...p, caresFor: recipientIds } : p
       );
 
       await setDoc(getSessionRef(sessionId), {
@@ -288,7 +272,7 @@ export default function App({ sessionId }: AppProps) {
     }
   };
 
-  const handleRemoveCare = async (caregiverId: string) => {
+  const handleRemoveOneCareRecipient = async (caregiverId: string, recipientId: string) => {
     if (!sessionId || !session) return;
 
     if (currentStatus !== 'draft') {
@@ -298,11 +282,13 @@ export default function App({ sessionId }: AppProps) {
 
     try {
       const updatedParticipants = participants.map((p) => {
-        if (p.id === caregiverId) {
+        if (p.id !== caregiverId) return p;
+        const newCaresFor = (p.caresFor || []).filter((id) => id !== recipientId);
+        if (newCaresFor.length === 0) {
           const { caresFor, ...rest } = p;
           return rest;
         }
-        return p;
+        return { ...p, caresFor: newCaresFor };
       });
 
       await setDoc(getSessionRef(sessionId), {
@@ -310,7 +296,7 @@ export default function App({ sessionId }: AppProps) {
         updatedAt: serverTimestamp(),
       }, { merge: true });
     } catch (error) {
-      console.error('Error removing care:', error);
+      console.error('Error removing care recipient:', error);
     }
   };
 
@@ -529,8 +515,9 @@ export default function App({ sessionId }: AppProps) {
           <ParticipantsList
             participants={participants}
             onRemoveParticipant={handleRemoveParticipant}
+            balances={balances}
             onAssignCare={handleAssignCare}
-            onRemoveCare={handleRemoveCare}
+            onRemoveOneCareRecipient={handleRemoveOneCareRecipient}
           />
 
           {/* 2. Add Participant */}
@@ -595,9 +582,10 @@ export default function App({ sessionId }: AppProps) {
           <div className="col-span-4 space-y-6">
             <ParticipantsList
               participants={participants}
+              balances={balances}
               onRemoveParticipant={handleRemoveParticipant}
               onAssignCare={handleAssignCare}
-              onRemoveCare={handleRemoveCare}
+              onRemoveOneCareRecipient={handleRemoveOneCareRecipient}
             />
             <BalancesCard
               participants={participants}
