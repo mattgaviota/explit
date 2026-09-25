@@ -6,6 +6,7 @@ import { setDoc, serverTimestamp } from 'firebase/firestore';
 import { Wallet, Copy, Check } from 'lucide-react';
 import { getSessionRef } from '@/lib/firebase';
 import Toast, { ToastMessage } from '@/components/Toast';
+import FeedbackForm from '@/components/FeedbackForm';
 
 export default function Home() {
   const router = useRouter();
@@ -223,6 +224,15 @@ export default function Home() {
                 {isJoining ? 'Uniéndose...' : 'Unirse'}
               </button>
             </form>
+          </div>
+
+          {/* Feedback / Suggestions */}
+          <div className="bg-white rounded-3xl shadow-lg p-8 border border-slate-100">
+            <h2 className="text-xl font-bold mb-4 text-center">¿Tenés una sugerencia?</h2>
+            <FeedbackForm
+              onSuccess={() => addToast('success', '¡Gracias por tu sugerencia!')}
+              onError={(msg) => addToast('error', msg)}
+            />
           </div>
         </div>
 
