@@ -119,6 +119,10 @@ export default function Home() {
               </li>
               <li className="flex items-start gap-2">
                 <span className="flex-shrink-0">✓</span>
+                <span>Clona una sesión completada para reutilizar los mismos participantes en una nueva juntada</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="flex-shrink-0">✓</span>
                 <span>Sin registro de datos: no guardamos tu información ni te asociamos con las sesiones</span>
               </li>
             </ul>

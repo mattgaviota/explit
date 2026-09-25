@@ -9,7 +9,7 @@ import {
   serverTimestamp,
   arrayUnion,
 } from 'firebase/firestore';
-import { PlusCircle, Receipt, Wallet, Home, Copy, Check } from 'lucide-react';
+import { PlusCircle, Receipt, Wallet, Home, Copy, Check, CopyPlus } from 'lucide-react';
 import { useSession, useExpenses } from '@/lib/hooks';
 import {
   calculateTotalAmount,
@@ -84,6 +84,31 @@ export default function App({ sessionId }: AppProps) {
     } catch (error) {
       console.error('Error changing session status:', error);
       addToast('error', 'Error al cambiar el estado de la sesión');
+    }
+  };
+
+  const handleCloneSession = async () => {
+    if (!session) return;
+
+    try {
+      const newSessionId = crypto.randomUUID();
+      const now = new Date();
+      const expiredAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+      const sessionData: any = {
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        expiredAt,
+        participants: session.participants,
+        status: 'draft',
+      };
+      if (session.name) sessionData.name = `${session.name} (copia)`;
+
+      await setDoc(getSessionRef(newSessionId), sessionData, { merge: true });
+      router.push(`/gastos/${newSessionId}`);
+    } catch (error) {
+      console.error('Error cloning session:', error);
+      addToast('error', 'Error al clonar la sesión');
     }
   };
 
@@ -415,23 +440,36 @@ export default function App({ sessionId }: AppProps) {
               <p className="text-xs text-slate-500">
                 Comparte esta sesión con tus amigos para que todos contribuyan:
               </p>
-              <button
-                onClick={copySessionId}
-                className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition-colors"
-                title="Copiar enlace de sesión"
-              >
-                {copiedSessionId ? (
-                  <>
-                    <Check className="w-3.5 h-3.5" />
-                    <span>ID copiado</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5" />
-                    <span className="font-mono text-slate-600">{sessionId.slice(0, 8)}...</span>
-                  </>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={copySessionId}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition-colors"
+                  title="Copiar enlace de sesión"
+                >
+                  {copiedSessionId ? (
+                    <>
+                      <Check className="w-3.5 h-3.5" />
+                      <span>ID copiado</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5" />
+                      <span className="font-mono text-slate-600">{sessionId.slice(0, 8)}...</span>
+                    </>
+                  )}
+                </button>
+
+                {currentStatus === 'completed' && (
+                  <button
+                    onClick={handleCloneSession}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition-colors"
+                    title="Crear una nueva sesión con los mismos participantes"
+                  >
+                    <CopyPlus className="w-3.5 h-3.5" />
+                    <span>Clonar Sesión</span>
+                  </button>
                 )}
-              </button>
+              </div>
             </div>
           </div>
           <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 space-y-3">
